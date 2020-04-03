@@ -321,29 +321,32 @@ def generate_test_input_networkx_graph(rand, theta):
         del lines[0]
         num_edges = int(lines[0])
         del lines[0]
+        list.sort(lines)
 
     file_graph = nx.DiGraph()
     file_graph = nx.parse_edgelist(lines, create_using=nx.DiGraph(), nodetype=int, data=((DISTANCE_WEIGHT_NAME, float),))
 
 
     edges = list(file_graph.edges(data=DISTANCE_WEIGHT_NAME))
+    orderedNodes = np.arange(0, num_nodes)
 
-    geo_graph = nx.geographical_threshold_graph(250, theta=theta)
+    geo_graph = nx.geographical_threshold_graph(num_nodes, theta=theta)
 
-    mst_graph = nx.Graph()
-    mst_graph.add_weighted_edges_from(edges, weight=DISTANCE_WEIGHT_NAME)
-    mst_graph = nx.minimum_spanning_tree(mst_graph, weight=DISTANCE_WEIGHT_NAME)
+    mst_graph_all_edges = nx.Graph()
+    mst_graph_all_edges.add_nodes_from(orderedNodes)
+    mst_graph_all_edges.add_weighted_edges_from(edges, weight=DISTANCE_WEIGHT_NAME)
+    mst_graph = nx.minimum_spanning_tree(mst_graph_all_edges, weight=DISTANCE_WEIGHT_NAME)
     # Put geo_graph's node attributes into the mst_graph.
     for i in mst_graph.nodes():
         mst_graph.nodes[i].update(geo_graph.nodes[i]) #adds node weight and pos
 
-    combined_graph = nx.compose_all((mst_graph, geo_graph.copy()))
+    combined_graph = nx.compose_all((mst_graph, mst_graph_all_edges.copy()))
     # Put all distance weights into edge attributes.
     for i, j in combined_graph.edges():
         combined_graph.get_edge_data(i, j).setdefault(DISTANCE_WEIGHT_NAME,
                                                       file_graph[i][j][DISTANCE_WEIGHT_NAME])
 
-    ge_graph = add_shortest_path(combined_graph)
+    ge_graph = add_shortest_path(rand, combined_graph)
     input_graph, target_graph = graph_to_input_target(ge_graph)
 
     ge_input_graphs.append(input_graph)
